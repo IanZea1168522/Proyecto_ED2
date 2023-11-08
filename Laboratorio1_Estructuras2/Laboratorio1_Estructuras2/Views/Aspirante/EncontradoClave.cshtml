@@ -1,0 +1,42 @@
+﻿@model List<string>
+
+@{
+    ViewBag.Title = "Aspirantes";
+}
+<h2>Aspirantes encontrados</h2>
+<br />
+@if (Model.Count > 0)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>nombre</th>
+                <th>dpi</th>
+                <th>empresas</th>
+                <th>cartas</th>
+                <th>conversaciones</th>
+                <th>fecha de nacimiento</th>
+                <th>dirección</th>
+                <th>reclutadores</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@Model[0]</td>
+                <td>@Model[1]</td> 
+                <td>@Model[2]</td>
+                <td>@Model[3]</td>
+                <td>@Model[4]</td>
+                <td>@Model[5]<td/>
+                <td>@Model[6]<td/>
+                <td>@Model[7]</td>
+            </tr>
+        </tbody>
+    </table>
+}
+<br />
+<center>
+    <form method="post" action="@Url.Action("SubirDatos5", "Aspirante")">
+        <button type="submit" id="llamarMetodoBtn" name="llamarMetodoBtn" class="botonplano">Volver</button>
+    </form>
+</center>
