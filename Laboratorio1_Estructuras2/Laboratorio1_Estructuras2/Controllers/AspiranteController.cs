@@ -4,6 +4,7 @@ using System.IO;
 using System.Web;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace Laboratorio1_Estructuras2.Controllers
 {
@@ -11,6 +12,7 @@ namespace Laboratorio1_Estructuras2.Controllers
     {
         public static AVL arbol = new AVL();
         public static List<Aspirante> listaAspi = new List<Aspirante>();
+        public static List<Aspirante> listaAspi2 = new List<Aspirante>();
         public static ArbolHuffman huffman = new ArbolHuffman();
         public static ArbolIn confidencial = new ArbolIn();
         public static LZW codificador = new LZW();
@@ -22,6 +24,7 @@ namespace Laboratorio1_Estructuras2.Controllers
         {
             huffman = huffman.arbol("234987 81324QWHERTYUIOP,YUEQIUOMQKJADSF-JNVCCHU IEW9\r413278901-234567890 1 2345.ASD,FGHJKLÑHK ADSFHIOEWHE,WFHDSFJBKV-J\nVCUHA678908,793789347897 8954648798ZXCVBNMJAWFJK'ADSFJIODA  SKNLVADN,J79869");
             listaAspi.Clear();
+            listaAspi2.Clear();
             permu = cod.permutacion("El_ropavejero");
             return View("Index");
         }
@@ -72,13 +75,13 @@ namespace Laboratorio1_Estructuras2.Controllers
             if (archivo == null || archivo.Length == 0 || ruta == null)
             {
                 ViewBag.Error = "Seleccione un archivo CSV válido. y una ruta de carpeta";
-                return View("SubirDatos4", listaAspi);
+                return View("SubirDatos4", listaAspi2);
             }
             using (var reader = new StreamReader(archivo.OpenReadStream()))
             {
-                if (listaAspi.Count() > 0)
+                if (listaAspi2.Count() > 0)
                 {
-                    listaAspi.Clear();
+                    listaAspi2.Clear();
                 }
                 if (confidencial.raiz != null)
                 {
@@ -143,12 +146,12 @@ namespace Laboratorio1_Estructuras2.Controllers
                                 break;
 
                             default:
-                                return View("ErrorSub5");
+                                return View("ErrorSub");
                         }
                     }
                     catch (JsonReaderException)
                     {
-                        return View("ErrorSub5");
+                        return View("ErrorSub");
                     }
                 }
 
@@ -182,9 +185,9 @@ namespace Laboratorio1_Estructuras2.Controllers
                 }
                 catch (Exception e)
                 {
-                    return View("ErrorSub4");
+                    return View("ErrorSub");
                 }
-                listaAspi = arbol.listaOrdenada();
+                listaAspi2 = arbol.listaOrdenada();
             }
             return RedirectToAction("SubirDatos4");
         }
@@ -228,70 +231,84 @@ namespace Laboratorio1_Estructuras2.Controllers
         [Route("GenerarClave")]
         public IActionResult generar(string Dpi, string reclu, string direc)
         {
-            if (Dpi == null || confidencial.raiz == null)
+            try
+            {
+                if (Dpi == null || confidencial.raiz == null)
+                {
+                    return View("ErrorSub5");
+                }
+                var aspirante = confidencial.Buscar(huffman.Codificar(Dpi.ToUpper(), huffman));
+                if (aspirante == null || aspirante.reclutadores != reclu || aspirante.direccion != huffman.Codificar(direc.ToUpper(), huffman))
+                {
+                    return View("ErrorSub5");
+                }
+                Asimetrico = new RSAA(GenerarNumeroPrimoAleatorio(1, 100), GenerarNumeroPrimoAleatorio(1, 100));
+                aspirante.encriptado = Asimetrico.Crypt(clave, Asimetrico.public1, Asimetrico.common);
+                return View("clave", ("Identificador: " + Convert.ToString(Asimetrico.private1) + ", Contraseña: " + Convert.ToString(Asimetrico.common)));
+            }
+            catch (Exception e)
             {
                 return View("ErrorSub5");
             }
-            var aspirante = confidencial.Buscar(huffman.Codificar(Dpi, huffman));
-            if(aspirante.reclutadores != reclu || aspirante.direccion != huffman.Codificar(direc.ToUpper(), huffman))
-            {
-                return View("ErrorSub5");
-            }
-            Asimetrico = new RSAA(GenerarNumeroPrimoAleatorio(1, 100), GenerarNumeroPrimoAleatorio(1, 100));
-            aspirante.encriptado = Asimetrico.Crypt(clave, Asimetrico.public1, Asimetrico.common);
-            return View("clave", ("Identificador: " + Convert.ToString(Asimetrico.private1) + ", Contraseña: " + Convert.ToString(Asimetrico.common)));
         }
         [HttpPost]
         [Route("mostrarInfoClave")]
         public IActionResult buscarCla(string Dpi1, string reclu1, string clave1, string ident)
         {
-            if (Dpi1 == null || confidencial.raiz == null)
+            try
+            {
+                if (Dpi1 == null || confidencial.raiz == null)
+                {
+                    return View("ErrorSub5");
+                }
+                var aspirante = confidencial.Buscar(huffman.Codificar(Dpi1.ToUpper(), huffman));
+                if (aspirante == null || aspirante.reclutadores != reclu1 || aspirante.encriptado == null)
+                {
+                    return View("ErrorSub5");
+                }
+                if (Asimetrico.Decrypt(aspirante.encriptado, Convert.ToInt64(clave1), Convert.ToInt64(ident)) == clave)
+                {
+                    string cartas = "";
+                    List<String> lista = new List<string>();
+                    lista.Add(aspirante.nombre);
+                    lista.Add(huffman.Decodificar(aspirante.infoPriv[0], huffman));
+                    lista.Add(huffman.Decodificar(aspirante.infoPriv[1], huffman));
+                    for (int i = 0; i < aspirante.carta.Count(); i++)
+                    {
+                        if (cartas == "")
+                        {
+                            cartas = codificador.descomprimir(aspirante.carta[i], aspirante.diccionario[i]);
+                        }
+                        else
+                        {
+                            cartas += "\n" + codificador.descomprimir(aspirante.carta[i], aspirante.diccionario[i]);
+                        }
+                    }
+                    lista.Add(huffman.Decodificar(cartas, huffman));
+                    string convs = "";
+                    for (int i = 0; i < aspirante.Convs.Count(); i++)
+                    {
+                        if (convs == "")
+                        {
+                            convs = cod.desPermutar(cod.DescifrarCesar(aspirante.Convs[i]), permu);
+                        }
+                        else
+                        {
+                            convs += "\n" + cod.desPermutar(cod.DescifrarCesar(aspirante.Convs[i]), permu);
+                        }
+                    }
+                    lista.Add(convs);
+                    lista.Add(aspirante.nacimiento);
+                    lista.Add(huffman.Decodificar(aspirante.direccion, huffman));
+                    lista.Add(aspirante.reclutadores);
+                    return View("EncontradoClave", lista);
+                }
+                return View("ErrorSub5");
+            }
+            catch (Exception e)
             {
                 return View("ErrorSub5");
             }
-            var aspirante = confidencial.Buscar(huffman.Codificar(Dpi1, huffman));
-            if (aspirante.reclutadores != reclu1 || aspirante.encriptado == null)
-            {
-                return View("ErrorSub5");
-            }
-            if(Asimetrico.Decrypt(aspirante.encriptado, Convert.ToInt64(clave1), Convert.ToInt64(ident)) == clave)
-            {
-                string cartas = "";
-                List<String> lista = new List<string>();
-                lista.Add(aspirante.nombre);
-                lista.Add(huffman.Decodificar(aspirante.infoPriv[0], huffman));
-                lista.Add(huffman.Decodificar(aspirante.infoPriv[1], huffman));
-                for (int i = 0; i < aspirante.carta.Count(); i++)
-                {
-                    if (cartas == "")
-                    {
-                        cartas = codificador.descomprimir(aspirante.carta[i], aspirante.diccionario[i]);
-                    }
-                    else
-                    {
-                        cartas += "\n" + codificador.descomprimir(aspirante.carta[i], aspirante.diccionario[i]);
-                    }
-                }
-                lista.Add(huffman.Decodificar(cartas, huffman));
-                string convs = "";
-                for(int i = 0; i < aspirante.Convs.Count(); i++)
-                {
-                    if(convs == "")
-                    {
-                        convs = cod.desPermutar(cod.DescifrarCesar(aspirante.Convs[i]), permu);
-                    }
-                    else
-                    {
-                        convs += "\n" + cod.desPermutar(cod.DescifrarCesar(aspirante.Convs[i]), permu);
-                    }
-                }
-                lista.Add(convs);
-                lista.Add(aspirante.nacimiento);
-                lista.Add(huffman.Decodificar(aspirante.direccion, huffman));
-                lista.Add(aspirante.reclutadores);
-                return View("EncontradoClave", lista);
-            }
-            return View("ErrorSub5");
         }
         [HttpPost]
         [Route("Volver")]

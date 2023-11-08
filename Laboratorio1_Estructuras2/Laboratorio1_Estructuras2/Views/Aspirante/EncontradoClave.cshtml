@@ -1,5 +1,4 @@
-﻿@model List<string>
-
+﻿﻿@Model List<string>
 @{
     ViewBag.Title = "Aspirantes";
 }
@@ -36,7 +35,7 @@
 }
 <br />
 <center>
-    <form method="post" action="@Url.Action("SubirDatos5", "Aspirante")">
+    <form method="post" action="@Url.Action("volver", "Aspirante")">
         <button type="submit" id="llamarMetodoBtn" name="llamarMetodoBtn" class="botonplano">Volver</button>
     </form>
 </center>
